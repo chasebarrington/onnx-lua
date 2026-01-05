@@ -20,8 +20,25 @@ build_onnx_lua.bat
 ## usage
 
 ```lua
+-- load model
 local model = onnx.load_model("model.onnx")
-local outputs = onnx.run(model, {input}, {{1, 4}})
+
+-- get model info
+local input_names = onnx.get_input_names(model)
+local input_shapes = onnx.get_input_shapes(model)
+local output_names = onnx.get_output_names(model)
+
+-- prepare input data (flattened)
+local input_data = {1.0, 2.0, 3.0, 4.0}
+local inputs = {input_data}
+local shapes = {{1, 4}}
+
+-- run inference
+local outputs = onnx.run(model, inputs, shapes)
+
+-- get results
+local result = outputs[1]
+print("output:", result[1], result[2])  -- output: -3.47 1.94
 ```
 
 ## integration
@@ -32,4 +49,7 @@ lua_call(L, 0, 1);
 lua_setglobal(L, "onnx");
 ```
 
-link: `onnx_lua.lib`, `lua51.lib`, `onnxruntime.lib`, `winmm.lib`, `ws2_32.lib`
+link libraries:
+- `build/onnx_lua.lib` - lua bindings
+- `onnxruntime/lib/onnxruntime.lib` - onnx runtime
+- `winmm.lib`, `ws2_32.lib` - system dependencies

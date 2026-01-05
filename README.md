@@ -23,22 +23,21 @@ build_onnx_lua.bat
 -- load model
 local model = onnx.load_model("model.onnx")
 
--- get model info
-local input_names = onnx.get_input_names(model)
-local input_shapes = onnx.get_input_shapes(model)
-local output_names = onnx.get_output_names(model)
+-- inspect model
+local input_names = onnx.get_input_names(model)      -- {"input"}
+local input_shapes = onnx.get_input_shapes(model)    -- {{1, 4}}
+local output_names = onnx.get_output_names(model)    -- {"output"}
+local output_shapes = onnx.get_output_shapes(model)  -- {{1, 2}}
 
--- prepare input data (flattened)
+print("model expects input:", input_names[1], "with shape", input_shapes[1][1], "x", input_shapes[1][2])
+print("model outputs:", output_names[1], "with shape", output_shapes[1][1], "x", output_shapes[1][2])
+
+-- prepare input matching expected shape
 local input_data = {1.0, 2.0, 3.0, 4.0}
-local inputs = {input_data}
-local shapes = {{1, 4}}
-
--- run inference
-local outputs = onnx.run(model, inputs, shapes)
+local outputs = onnx.run(model, {input_data}, input_shapes)
 
 -- get results
-local result = outputs[1]
-print("output:", result[1], result[2])  -- output: -3.47 1.94
+print("output:", outputs[1][1], outputs[1][2])  -- output: -3.47 1.94
 ```
 
 ## integration

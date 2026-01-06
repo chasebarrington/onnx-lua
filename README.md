@@ -1,6 +1,6 @@
 # onnx-lua
 
-onnx runtime bindings for luajit 2.1.0
+onnx runtime bindings for luajit 2.1.0 using sol2
 
 ## setup
 
@@ -47,6 +47,12 @@ lua_pushcfunction(L, OnnxLua::luaopen_onnx);
 lua_call(L, 0, 1);
 lua_setglobal(L, "onnx");
 ```
+
+include directories:
+- `include/` - onnx_lua headers
+- `sol2/include/` - sol2 headers
+- `LuaJIT-2.1.0-beta3/src/` - luajit headers
+- `onnxruntime/include/` - onnx runtime headers
 
 link libraries:
 - `build/onnx_lua.lib` - lua bindings

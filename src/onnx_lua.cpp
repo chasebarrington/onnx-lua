@@ -1,4 +1,5 @@
 #include "onnx_lua.h"
+#include <sol/sol.hpp>
 #include <stdexcept>
 #include <cstring>
 
@@ -110,192 +111,153 @@ std::vector<std::vector<int64_t>> OnnxSession::getOutputShapes() const {
     return output_shapes_;
 }
 
-std::vector<float> lua_table_to_float_vector(lua_State* L, int idx) {
-    std::vector<float> result;
-
-    lua_pushnil(L);
-    while (lua_next(L, idx) != 0) {
-        if (lua_isnumber(L, -1)) {
-            result.push_back(static_cast<float>(lua_tonumber(L, -1)));
-        }
-        lua_pop(L, 1);
-    }
-
-    return result;
-}
-
-std::vector<int64_t> lua_table_to_int64_vector(lua_State* L, int idx) {
-    std::vector<int64_t> result;
-
-    lua_pushnil(L);
-    while (lua_next(L, idx) != 0) {
-        if (lua_isnumber(L, -1)) {
-            result.push_back(static_cast<int64_t>(lua_tonumber(L, -1)));
-        }
-        lua_pop(L, 1);
-    }
-
-    return result;
-}
-
-void push_float_vector_to_lua(lua_State* L, const std::vector<float>& vec) {
-    lua_createtable(L, vec.size(), 0);
-    for (size_t i = 0; i < vec.size(); i++) {
-        lua_pushnumber(L, vec[i]);
-        lua_rawseti(L, -2, i + 1);
-    }
-}
-
-void push_int64_vector_to_lua(lua_State* L, const std::vector<int64_t>& vec) {
-    lua_createtable(L, vec.size(), 0);
-    for (size_t i = 0; i < vec.size(); i++) {
-        lua_pushnumber(L, static_cast<lua_Number>(vec[i]));
-        lua_rawseti(L, -2, i + 1);
-    }
-}
-
 extern "C" {
 
-int lua_onnx_load_model(lua_State* L) {
-    const char* model_path = luaL_checkstring(L, 1);
-
-    try {
-        OnnxSession* session = new OnnxSession(model_path);
-
-        OnnxSession** udata = (OnnxSession**)lua_newuserdata(L, sizeof(OnnxSession*));
-        *udata = session;
-
-        luaL_getmetatable(L, "OnnxSession");
-        lua_setmetatable(L, -2);
-
-        return 1;
-    } catch (const std::exception& e) {
-        lua_pushnil(L);
-        lua_pushstring(L, e.what());
-        return 2;
-    }
-}
-
-int lua_onnx_run_inference(lua_State* L) {
-    OnnxSession** session = (OnnxSession**)luaL_checkudata(L, 1, "OnnxSession");
-    luaL_checktype(L, 2, LUA_TTABLE);
-    luaL_checktype(L, 3, LUA_TTABLE);
-
-    try {
-        std::vector<std::vector<float>> inputs;
-        lua_pushnil(L);
-        while (lua_next(L, 2) != 0) {
-            if (lua_istable(L, -1)) {
-                inputs.push_back(lua_table_to_float_vector(L, lua_gettop(L)));
-            }
-            lua_pop(L, 1);
-        }
-
-        std::vector<std::vector<int64_t>> input_shapes;
-        lua_pushnil(L);
-        while (lua_next(L, 3) != 0) {
-            if (lua_istable(L, -1)) {
-                input_shapes.push_back(lua_table_to_int64_vector(L, lua_gettop(L)));
-            }
-            lua_pop(L, 1);
-        }
-
-        auto outputs = (*session)->run(inputs, input_shapes);
-
-        lua_createtable(L, outputs.size(), 0);
-        for (size_t i = 0; i < outputs.size(); i++) {
-            push_float_vector_to_lua(L, outputs[i]);
-            lua_rawseti(L, -2, i + 1);
-        }
-
-        return 1;
-    } catch (const std::exception& e) {
-        lua_pushnil(L);
-        lua_pushstring(L, e.what());
-        return 2;
-    }
-}
-
-int lua_onnx_get_input_names(lua_State* L) {
-    OnnxSession** session = (OnnxSession**)luaL_checkudata(L, 1, "OnnxSession");
-
-    auto names = (*session)->getInputNames();
-    lua_createtable(L, names.size(), 0);
-    for (size_t i = 0; i < names.size(); i++) {
-        lua_pushstring(L, names[i].c_str());
-        lua_rawseti(L, -2, i + 1);
-    }
-
-    return 1;
-}
-
-int lua_onnx_get_output_names(lua_State* L) {
-    OnnxSession** session = (OnnxSession**)luaL_checkudata(L, 1, "OnnxSession");
-
-    auto names = (*session)->getOutputNames();
-    lua_createtable(L, names.size(), 0);
-    for (size_t i = 0; i < names.size(); i++) {
-        lua_pushstring(L, names[i].c_str());
-        lua_rawseti(L, -2, i + 1);
-    }
-
-    return 1;
-}
-
-int lua_onnx_get_input_shapes(lua_State* L) {
-    OnnxSession** session = (OnnxSession**)luaL_checkudata(L, 1, "OnnxSession");
-
-    auto shapes = (*session)->getInputShapes();
-    lua_createtable(L, shapes.size(), 0);
-    for (size_t i = 0; i < shapes.size(); i++) {
-        push_int64_vector_to_lua(L, shapes[i]);
-        lua_rawseti(L, -2, i + 1);
-    }
-
-    return 1;
-}
-
-int lua_onnx_get_output_shapes(lua_State* L) {
-    OnnxSession** session = (OnnxSession**)luaL_checkudata(L, 1, "OnnxSession");
-
-    auto shapes = (*session)->getOutputShapes();
-    lua_createtable(L, shapes.size(), 0);
-    for (size_t i = 0; i < shapes.size(); i++) {
-        push_int64_vector_to_lua(L, shapes[i]);
-        lua_rawseti(L, -2, i + 1);
-    }
-
-    return 1;
-}
-
-int lua_onnx_free_model(lua_State* L) {
-    OnnxSession** session = (OnnxSession**)luaL_checkudata(L, 1, "OnnxSession");
-    if (*session) {
-        delete *session;
-        *session = nullptr;
-    }
-    return 0;
-}
-
 int luaopen_onnx(lua_State* L) {
-    luaL_newmetatable(L, "OnnxSession");
-    lua_pushstring(L, "__gc");
-    lua_pushcfunction(L, lua_onnx_free_model);
-    lua_settable(L, -3);
-    lua_pop(L, 1);
+    sol::state_view lua(L);
 
-    static const luaL_Reg onnx_functions[] = {
-        {"load_model", lua_onnx_load_model},
-        {"run", lua_onnx_run_inference},
-        {"get_input_names", lua_onnx_get_input_names},
-        {"get_output_names", lua_onnx_get_output_names},
-        {"get_input_shapes", lua_onnx_get_input_shapes},
-        {"get_output_shapes", lua_onnx_get_output_shapes},
-        {NULL, NULL}
+    auto onnx_module = lua.create_table();
+
+    lua.new_usertype<OnnxSession>("OnnxSession",
+        sol::constructors<OnnxSession(const std::string&)>(),
+        "run", &OnnxSession::run,
+        "getInputNames", &OnnxSession::getInputNames,
+        "getOutputNames", &OnnxSession::getOutputNames,
+        "getInputShapes", &OnnxSession::getInputShapes,
+        "getOutputShapes", &OnnxSession::getOutputShapes
+    );
+
+    onnx_module["load_model"] = [](sol::this_state L, const std::string& model_path) -> sol::object {
+        sol::state_view lua(L);
+        try {
+            auto session = std::make_shared<OnnxSession>(model_path);
+            return sol::make_object(lua, session);
+        } catch (const std::exception& e) {
+            return sol::make_object(lua, sol::nil);
+        }
     };
 
-    luaL_newlib(L, onnx_functions);
+    onnx_module["run"] = [](sol::this_state L,
+                            std::shared_ptr<OnnxSession> session,
+                            const sol::table& inputs_table,
+                            const sol::table& shapes_table) -> sol::object {
+        sol::state_view lua(L);
 
+        if (!session) {
+            return sol::make_object(lua, sol::nil);
+        }
+
+        try {
+            std::vector<std::vector<float>> inputs;
+            for (const auto& pair : inputs_table) {
+                if (pair.second.is<sol::table>()) {
+                    sol::table input_table = pair.second.as<sol::table>();
+                    std::vector<float> input_vec;
+                    for (const auto& val_pair : input_table) {
+                        if (val_pair.second.is<float>() || val_pair.second.is<double>()) {
+                            input_vec.push_back(val_pair.second.as<float>());
+                        }
+                    }
+                    inputs.push_back(input_vec);
+                }
+            }
+
+            std::vector<std::vector<int64_t>> shapes;
+            for (const auto& pair : shapes_table) {
+                if (pair.second.is<sol::table>()) {
+                    sol::table shape_table = pair.second.as<sol::table>();
+                    std::vector<int64_t> shape_vec;
+                    for (const auto& val_pair : shape_table) {
+                        if (val_pair.second.is<int>() || val_pair.second.is<double>()) {
+                            shape_vec.push_back(val_pair.second.as<int64_t>());
+                        }
+                    }
+                    shapes.push_back(shape_vec);
+                }
+            }
+
+            auto outputs = session->run(inputs, shapes);
+
+            sol::table result = lua.create_table();
+            for (size_t i = 0; i < outputs.size(); i++) {
+                sol::table output_table = lua.create_table();
+                for (size_t j = 0; j < outputs[i].size(); j++) {
+                    output_table[j + 1] = outputs[i][j];
+                }
+                result[i + 1] = output_table;
+            }
+
+            return sol::make_object(lua, result);
+        } catch (const std::exception& e) {
+            return sol::make_object(lua, sol::nil);
+        }
+    };
+
+    onnx_module["get_input_names"] = [](sol::this_state L, std::shared_ptr<OnnxSession> session) -> sol::object {
+        sol::state_view lua(L);
+        if (!session) {
+            return sol::make_object(lua, sol::nil);
+        }
+
+        auto names = session->getInputNames();
+        sol::table result = lua.create_table();
+        for (size_t i = 0; i < names.size(); i++) {
+            result[i + 1] = names[i];
+        }
+        return sol::make_object(lua, result);
+    };
+
+    onnx_module["get_output_names"] = [](sol::this_state L, std::shared_ptr<OnnxSession> session) -> sol::object {
+        sol::state_view lua(L);
+        if (!session) {
+            return sol::make_object(lua, sol::nil);
+        }
+
+        auto names = session->getOutputNames();
+        sol::table result = lua.create_table();
+        for (size_t i = 0; i < names.size(); i++) {
+            result[i + 1] = names[i];
+        }
+        return sol::make_object(lua, result);
+    };
+
+    onnx_module["get_input_shapes"] = [](sol::this_state L, std::shared_ptr<OnnxSession> session) -> sol::object {
+        sol::state_view lua(L);
+        if (!session) {
+            return sol::make_object(lua, sol::nil);
+        }
+
+        auto shapes = session->getInputShapes();
+        sol::table result = lua.create_table();
+        for (size_t i = 0; i < shapes.size(); i++) {
+            sol::table shape_table = lua.create_table();
+            for (size_t j = 0; j < shapes[i].size(); j++) {
+                shape_table[j + 1] = shapes[i][j];
+            }
+            result[i + 1] = shape_table;
+        }
+        return sol::make_object(lua, result);
+    };
+
+    onnx_module["get_output_shapes"] = [](sol::this_state L, std::shared_ptr<OnnxSession> session) -> sol::object {
+        sol::state_view lua(L);
+        if (!session) {
+            return sol::make_object(lua, sol::nil);
+        }
+
+        auto shapes = session->getOutputShapes();
+        sol::table result = lua.create_table();
+        for (size_t i = 0; i < shapes.size(); i++) {
+            sol::table shape_table = lua.create_table();
+            for (size_t j = 0; j < shapes[i].size(); j++) {
+                shape_table[j + 1] = shapes[i][j];
+            }
+            result[i + 1] = shape_table;
+        }
+        return sol::make_object(lua, result);
+    };
+
+    onnx_module.push(L);
     return 1;
 }
 

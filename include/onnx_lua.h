@@ -41,18 +41,6 @@ private:
 
 extern "C" {
     int luaopen_onnx(lua_State* L);
-    int lua_onnx_load_model(lua_State* L);
-    int lua_onnx_run_inference(lua_State* L);
-    int lua_onnx_get_input_names(lua_State* L);
-    int lua_onnx_get_output_names(lua_State* L);
-    int lua_onnx_get_input_shapes(lua_State* L);
-    int lua_onnx_get_output_shapes(lua_State* L);
-    int lua_onnx_free_model(lua_State* L);
 }
-
-std::vector<float> lua_table_to_float_vector(lua_State* L, int idx);
-std::vector<int64_t> lua_table_to_int64_vector(lua_State* L, int idx);
-void push_float_vector_to_lua(lua_State* L, const std::vector<float>& vec);
-void push_int64_vector_to_lua(lua_State* L, const std::vector<int64_t>& vec);
 
 }

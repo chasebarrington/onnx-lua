@@ -5,10 +5,16 @@ onnx runtime bindings for luajit 2.1.0 using sol2
 ## setup
 
 ```bash
-git clone --recursive https://github.com/chasebarrington/onnx-lua.git
+git clone --recursive -b sol2 https://github.com/chasebarrington/onnx-lua.git
 ```
 
 download [onnx runtime 1.17.1](https://github.com/microsoft/onnxruntime/releases/download/v1.17.1/onnxruntime-win-x64-1.17.1.zip) and extract to `onnxruntime/`
+
+## dependencies
+
+- LuaJIT 2.1.0-beta3 (submodule)
+- Sol2 v3.3.0 (submodule)
+- ONNX Runtime 1.17.1
 
 ## build
 
